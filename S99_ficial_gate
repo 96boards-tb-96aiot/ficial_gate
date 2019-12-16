@@ -1,0 +1,15 @@
+#!/bin/sh
+
+case "$1" in
+  start)
+    ficial_gate -f 30000 -e&
+    ;;
+  stop)
+    killall ficial_gate
+    ;;
+  *)
+    echo "Usage: $0 {start|stop}"
+    exit 1
+    ;;
+esac
+exit 0
