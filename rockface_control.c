@@ -53,6 +53,7 @@
 #define FACE_SCORE 0.9
 #define FACE_SCORE_REGISTER 0.9999
 #define FACE_REGISTER_CNT 5
+#define FACE_REAL_SCORE 0.9
 #define LICENCE_PATH "/userdata/key.lic"
 #define FACE_DATA_PATH "/usr/lib64"
 #define MIN_FACE_WIDTH(w) ((w) / 5)
@@ -366,11 +367,9 @@ static bool rockface_control_wait_ir(bool *real)
     if (pthread_cond_timedwait(&g_ir_cond, &g_ir_mutex, &timeout) != ETIMEDOUT) {
         printf("real_score: %f fake_score: %f \n", g_ir_result.real_score, g_ir_result.fake_score);
         ret = true;
-        //*real = (g_ir_result.real_score > 0.9 ? true : false);
-        if (cnt++ % 2)
-            *real = true;
-        else
-            *real = false;
+        *real = (g_ir_result.real_score > FACE_REAL_SCORE ? true : false);
+    } else {
+        *real = false;
     }
     pthread_mutex_unlock(&g_ir_mutex);
     return ret;
@@ -534,7 +533,7 @@ static void *rockface_control_thread(void *arg)
             //printf("time: %ldus\n", (t1.tv_sec - t0.tv_sec) * 1000000 + t1.tv_usec - t0.tv_usec);
             rockface_control_wait_ir(&real);
             shadow_paint_name(name, real);
-            if (!g_register && !last_real) {
+            if (!g_register && !last_real && real) {
                 printf("name: %s\n", name);
                 memset(last_name, 0, sizeof(last_name));
                 strncpy(last_name, name, sizeof(last_name) - 1);
