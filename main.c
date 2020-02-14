@@ -99,8 +99,7 @@ int MiniGUIMain(int argc, const char *argv[])
 
     play_wav_signal(WELCOME_WAV);
 
-    if (rockface_control_init(face_cnt))
-        return -1;
+    rockface_control_init(face_cnt);
 
     if (rkisp_control_init())
         return -1;

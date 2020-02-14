@@ -300,6 +300,9 @@ int rockface_control_convert(void *ptr, int width, int height, RgaSURF_FORMAT rg
     rga_info_t src, dst;
     rockface_pixel_format fmt;
 
+    if (!g_run)
+        return -1;
+
     if (rga_fmt == RK_FORMAT_YCbCr_420_SP)
         fmt = ROCKFACE_PIXEL_FORMAT_YUV420SP_NV12;
     else {
@@ -392,6 +395,9 @@ int rockface_control_convert_ir(void *ptr, int width, int height, RgaSURF_FORMAT
     rockface_det_array_t face_array;
     rockface_liveness_t result;
     rga_info_t src, dst;
+
+    if (!g_run)
+        return -1;
 
     memset(&ir_face, 0, sizeof(rockface_det_t));
 
