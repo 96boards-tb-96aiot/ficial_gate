@@ -33,7 +33,6 @@
 #include <pthread.h>
 #include <stdbool.h>
 #include "rockface_control.h"
-#include "shadow_display.h"
 #include "video_common.h"
 
 #include <camera_engine_rkisp/interface/rkisp_api.h>
@@ -75,9 +74,9 @@ static void *process(void *arg)
 
         rockface_control_convert(g_rotate_bo.ptr, ctx->height, ctx->width,
                                  RK_FORMAT_YCbCr_420_SP);
-        //shadow_display(buf->buf, buf->fd, RK_FORMAT_YCbCr_420_SP, ctx->width, ctx->height);
-        shadow_display_vertical(g_rotate_bo.ptr, g_rotate_fd, RK_FORMAT_YCbCr_420_SP,
-                                ctx->height, ctx->width);
+        if (shadow_display_vertical_cb)
+            shadow_display_vertical_cb(g_rotate_bo.ptr, g_rotate_fd, RK_FORMAT_YCbCr_420_SP,
+                                       ctx->height, ctx->width);
         if (ui_paint_refresh_cb)
             ui_paint_refresh_cb();
 

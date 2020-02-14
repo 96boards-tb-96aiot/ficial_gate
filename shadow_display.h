@@ -39,10 +39,6 @@ extern "C" {
 
 #include <stdbool.h>
 
-typedef void (*ui_paint_box_callback)(int width, int height, int left, int top, int right, int bottom);
-void register_ui_paint_box(ui_paint_box_callback cb);
-typedef void (*ui_paint_name_callback)(char *name, bool real);
-void register_ui_paint_name(ui_paint_name_callback cb);
 void shadow_display(void *src_ptr, int src_fd, int src_fmt, int src_w, int src_h);
 void shadow_display_vertical(void *src_ptr, int src_fd, int src_fmt, int src_w, int src_h);
 void shadow_paint_box(int left, int top, int right, int bottom);

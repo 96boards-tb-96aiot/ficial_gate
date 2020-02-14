@@ -40,6 +40,23 @@ extern "C" {
 typedef void (*ui_paint_refresh_callback)(void);
 void register_ui_paint_refresh(ui_paint_refresh_callback cb);
 extern ui_paint_refresh_callback ui_paint_refresh_cb;
+
+typedef void (*shadow_paint_box_callback)(int left, int top, int right, int bottom);
+void register_shadow_paint_box(shadow_paint_box_callback cb);
+extern shadow_paint_box_callback shadow_paint_box_cb;
+
+typedef void (*shadow_paint_name_callback)(char *name, bool real);
+void register_shadow_paint_name(shadow_paint_name_callback cb);
+extern shadow_paint_name_callback shadow_paint_name_cb;
+
+typedef void (*shadow_display_callback)(void *src_ptr, int src_fd, int src_fmt, int src_w, int src_h);
+void register_shadow_display(shadow_display_callback cb);
+extern shadow_display_callback shadow_display_cb;
+
+typedef void (*shadow_display_vertical_callback)(void *src_ptr, int src_fd, int src_fmt, int src_w, int src_h);
+void register_shadow_display_vertical(shadow_display_vertical_callback cb);
+extern shadow_display_vertical_callback shadow_display_vertical_cb;
+
 int get_video_id(char *name);
 
 #ifdef __cplusplus

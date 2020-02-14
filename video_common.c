@@ -38,11 +38,34 @@
 
 #define MAX_VIDEO_ID 20
 
-typedef void (*ui_paint_refresh_callback)(void);
 ui_paint_refresh_callback ui_paint_refresh_cb = NULL;
 void register_ui_paint_refresh(ui_paint_refresh_callback cb)
 {
     ui_paint_refresh_cb = cb;
+}
+
+shadow_paint_box_callback shadow_paint_box_cb = NULL;
+void register_shadow_paint_box(shadow_paint_box_callback cb)
+{
+    shadow_paint_box_cb = cb;
+}
+
+shadow_paint_name_callback shadow_paint_name_cb = NULL;
+void register_shadow_paint_name(shadow_paint_name_callback cb)
+{
+    shadow_paint_name_cb = cb;
+}
+
+shadow_display_callback shadow_display_cb = NULL;
+void register_shadow_display(shadow_display_callback cb)
+{
+    shadow_display_cb = cb;
+}
+
+shadow_display_vertical_callback shadow_display_vertical_cb = NULL;
+void register_shadow_display_vertical(shadow_display_vertical_callback cb)
+{
+    shadow_display_vertical_cb = cb;
 }
 
 int get_video_id(char *name)

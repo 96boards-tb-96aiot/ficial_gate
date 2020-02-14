@@ -33,18 +33,7 @@
 #include <minigui/shadow_rga.h>
 #include <rga/RgaApi.h>
 #include "shadow_display.h"
-
-static ui_paint_box_callback ui_paint_box_cb;
-void register_ui_paint_box(ui_paint_box_callback cb)
-{
-    ui_paint_box_cb = cb;
-}
-
-static ui_paint_name_callback ui_paint_name_cb;
-void register_ui_paint_name(ui_paint_name_callback cb)
-{
-    ui_paint_name_cb = cb;
-}
+#include "ui.h"
 
 static int g_crop_video_x, g_crop_video_y, g_crop_video_w, g_crop_video_h;
 static int g_crop_screen_w, g_crop_screen_h;
@@ -163,16 +152,14 @@ void shadow_display_vertical(void *src_ptr, int src_fd, int src_fmt, int src_w, 
 
 void shadow_paint_box(int left, int top, int right, int bottom)
 {
-    if (ui_paint_box_cb)
-        ui_paint_box_cb(g_crop_video_w, g_crop_video_h,
-                left - g_crop_video_x, top - g_crop_video_y,
-                right - g_crop_video_x, bottom - g_crop_video_y);
+    ui_paint_box(g_crop_video_w, g_crop_video_h,
+            left - g_crop_video_x, top - g_crop_video_y,
+            right - g_crop_video_x, bottom - g_crop_video_y);
 }
 
 void shadow_paint_name(char *name, bool real)
 {
-    if (ui_paint_name_cb)
-        ui_paint_name_cb(name, real);
+    ui_paint_name(name, real);
 }
 
 void shadow_get_crop_screen(int *width, int *height)

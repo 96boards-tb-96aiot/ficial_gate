@@ -45,7 +45,7 @@
 #include "rockface_control.h"
 #include "play_wav.h"
 #include "load_feature.h"
-#include "shadow_display.h"
+#include "video_common.h"
 #include "rkisp_control.h"
 
 #define DEFAULT_FACE_NUMBER 1000
@@ -151,10 +151,12 @@ static int rockface_control_detect(void *ptr, int width, int height, rockface_pi
         top = face->box.top;
         right = face->box.right;
         bottom = face->box.bottom;
-        shadow_paint_box(left, top, right, bottom);
+        if (shadow_paint_box_cb)
+            shadow_paint_box_cb(left, top, right, bottom);
         rkisp_control_expo_weights_270(left, top, right, bottom);
     } else {
-        shadow_paint_box(0, 0, 0, 0);
+        if (shadow_paint_box_cb)
+            shadow_paint_box_cb(0, 0, 0, 0);
         rkisp_control_expo_weights_default();
     }
 
@@ -525,7 +527,8 @@ static void *rockface_control_thread(void *arg)
             del_timeout = 0;
             g_delete = false;
             play_wav_signal(DELETE_SUCCESS_WAV);
-            shadow_paint_name(NULL, false);
+            if (shadow_paint_name_cb)
+                shadow_paint_name_cb(NULL, false);
         } else if (result && face.score > FACE_SCORE) {
             end = strrchr(result->name, '.');
             if (end) {
@@ -538,7 +541,8 @@ static void *rockface_control_thread(void *arg)
             //printf("name: %s\n", name);
             //printf("time: %ldus\n", (t1.tv_sec - t0.tv_sec) * 1000000 + t1.tv_usec - t0.tv_usec);
             rockface_control_wait_ir(&real);
-            shadow_paint_name(name, real);
+            if (shadow_paint_name_cb)
+                shadow_paint_name_cb(name, real);
             if (!g_register && !last_real && real) {
                 printf("name: %s\n", name);
                 memset(last_name, 0, sizeof(last_name));
@@ -549,11 +553,13 @@ static void *rockface_control_thread(void *arg)
                 }
             }
         } else if (face.score > FACE_SCORE) {
-            shadow_paint_name(NULL, false);
+            if (shadow_paint_name_cb)
+                shadow_paint_name_cb(NULL, false);
         } else {
             memset(last_name, 0, sizeof(last_name));
             last_real = false;
-            shadow_paint_name(NULL, false);
+            if (shadow_paint_name_cb)
+                shadow_paint_name_cb(NULL, false);
         }
 #if 0
         if (face.score > FACE_SCORE)
