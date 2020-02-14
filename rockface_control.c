@@ -212,7 +212,8 @@ int rockface_control_get_path_feature(char *path, void *feature)
     rockface_feature_t *out_feature = (rockface_feature_t*)feature;
     rockface_image_t in_img;
     rockface_det_t face;
-    rockface_image_read(path, &in_img, 1);
+    if (rockface_image_read(path, &in_img, 1))
+        return -1;
     if (!_rockface_control_detect(&in_img, &face))
         ret = rockface_control_get_feature(&in_img, out_feature, &face);
     rockface_image_release(&in_img);
