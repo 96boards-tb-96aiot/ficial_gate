@@ -59,7 +59,7 @@ static void *process(void *arg)
         memset(&src, 0, sizeof(rga_info_t));
         src.fd = buf->fd;
         src.mmuFlag = 1;
-        src.rotation = HAL_TRANSFORM_ROT_270;
+        src.rotation = HAL_TRANSFORM_ROT_90;
         rga_set_rect(&src.rect, 0, 0, ctx->width, ctx->height, ctx->width, ctx->height,
                      RK_FORMAT_YCbCr_420_SP);
         memset(&dst, 0, sizeof(rga_info_t));

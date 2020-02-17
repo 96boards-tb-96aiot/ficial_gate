@@ -153,7 +153,7 @@ static int rockface_control_detect(void *ptr, int width, int height, rockface_pi
         bottom = face->box.bottom;
         if (shadow_paint_box_cb)
             shadow_paint_box_cb(left, top, right, bottom);
-        rkisp_control_expo_weights_270(left, top, right, bottom);
+        rkisp_control_expo_weights_90(left, top, right, bottom);
     } else {
         if (shadow_paint_box_cb)
             shadow_paint_box_cb(0, 0, 0, 0);
