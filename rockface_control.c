@@ -55,7 +55,7 @@
 #define FACE_REGISTER_CNT 5
 #define FACE_REAL_SCORE 0.9
 #define LICENCE_PATH "/userdata/key.lic"
-#define FACE_DATA_PATH "/usr/lib64"
+#define FACE_DATA_PATH "/usr/lib"
 #define MIN_FACE_WIDTH(w) ((w) / 5)
 #define CONVERT_RGB_WIDTH 640
 #define CONVERT_IR_WIDTH 640
