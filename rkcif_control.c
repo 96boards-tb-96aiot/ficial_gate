@@ -136,3 +136,8 @@ void rkcif_control_exit(void)
 
     rga_control_buffer_deinit(&g_rotate_bo, g_rotate_fd);
 }
+
+bool rkcif_control_run(void)
+{
+    return g_run;
+}

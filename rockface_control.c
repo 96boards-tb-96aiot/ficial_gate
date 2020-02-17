@@ -541,7 +541,10 @@ static void *rockface_control_thread(void *arg)
             }
             //printf("name: %s\n", name);
             //printf("time: %ldus\n", (t1.tv_sec - t0.tv_sec) * 1000000 + t1.tv_usec - t0.tv_usec);
-            rockface_control_wait_ir(&real);
+            if (rkcif_control_run())
+                rockface_control_wait_ir(&real);
+            else
+                real = false;
             if (shadow_paint_name_cb)
                 shadow_paint_name_cb(name, real);
             if (!g_register && !last_real && real) {

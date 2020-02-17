@@ -39,6 +39,7 @@ extern "C" {
 
 int rkcif_control_init(void);
 void rkcif_control_exit(void);
+bool rkcif_control_run(void);
 
 #ifdef __cplusplus
 }

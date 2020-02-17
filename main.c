@@ -106,8 +106,7 @@ int MiniGUIMain(int argc, const char *argv[])
     if (rkisp_control_init())
         return -1;
 
-    if (rkcif_control_init())
-        return -1;
+    rkcif_control_init();
 
     ui_run();
 
