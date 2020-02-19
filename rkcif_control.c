@@ -77,8 +77,6 @@ static void *process(void *arg)
         if (shadow_display_vertical_cb)
             shadow_display_vertical_cb(g_rotate_bo.ptr, g_rotate_fd, RK_FORMAT_YCbCr_420_SP,
                                        ctx->height, ctx->width);
-        if (ui_paint_refresh_cb)
-            ui_paint_refresh_cb();
 #endif
 
         rkisp_put_frame(ctx, buf);

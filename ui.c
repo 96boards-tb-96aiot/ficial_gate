@@ -46,6 +46,8 @@
 #include "rockface_control.h"
 #include "shadow_display.h"
 
+#define ID_TIMER 100
+
 #define IDC_REGISTER 500
 #define IDC_DELETE 501
 #define IDC_LOGO 502
@@ -133,19 +135,38 @@ static void ui_paint(HWND hwnd)
     EndPaint(hwnd, hdc);
 }
 
+static void ui_paint_refresh(void)
+{
+    int ui_width, ui_height;
+    shadow_get_crop_screen(&ui_width, &ui_height);
+    RECT rect = {0, IMG_LOGO_HEIGHT, ui_width, ui_height - IMG_LOGO_HEIGHT};
+    if (g_main_hwnd == HWND_INVALID)
+        return;
+    if (g_update)
+        InvalidateRect(g_main_hwnd, &rect, TRUE);
+    else
+        InvalidateRect(g_main_hwnd, &rect, FALSE);
+}
+
 static LRESULT ui_win_proc(HWND hwnd, UINT message, WPARAM w_param, LPARAM l_param)
 {
     HDC hdc;
 
     switch (message) {
     case MSG_CREATE:
+        SetTimer(hwnd, ID_TIMER, 3);
 #if 0
         CreateWindow(CTRL_STATIC, "",
                 SS_REALSIZEIMAGE | SS_CENTERIMAGE | SS_BITMAP | WS_CHILD | WS_VISIBLE,
                 IDC_LOGO, 0, 0, g_rcScr.right, IMG_LOGO_HEIGHT, hwnd, (DWORD)&img_logo_bmap);
 #endif
         break;
+    case MSG_CLOSE:
+        KillTimer(hwnd, ID_TIMER);
+        break;
     case MSG_TIMER:
+        if (w_param == ID_TIMER)
+            ui_paint_refresh();
         break;
     case MSG_PAINT:
         ui_paint(hwnd);
@@ -304,20 +325,5 @@ void ui_paint_name(char *name, bool real)
         g_update = true;
         g_real = real;
     }
-    pthread_mutex_unlock(&mutex);
-}
-
-void ui_paint_refresh(void)
-{
-    int ui_width, ui_height;
-    shadow_get_crop_screen(&ui_width, &ui_height);
-    RECT rect = {0, IMG_LOGO_HEIGHT, ui_width, ui_height - IMG_LOGO_HEIGHT};
-    if (g_main_hwnd == HWND_INVALID)
-        return;
-    pthread_mutex_lock(&mutex);
-    if (g_update)
-        InvalidateRect(g_main_hwnd, &rect, TRUE);
-    else
-        InvalidateRect(g_main_hwnd, &rect, FALSE);
     pthread_mutex_unlock(&mutex);
 }

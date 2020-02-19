@@ -38,12 +38,6 @@
 
 #define MAX_VIDEO_ID 20
 
-ui_paint_refresh_callback ui_paint_refresh_cb = NULL;
-void register_ui_paint_refresh(ui_paint_refresh_callback cb)
-{
-    ui_paint_refresh_cb = cb;
-}
-
 shadow_paint_box_callback shadow_paint_box_cb = NULL;
 void register_shadow_paint_box(shadow_paint_box_callback cb)
 {

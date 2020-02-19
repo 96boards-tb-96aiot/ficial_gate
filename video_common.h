@@ -37,10 +37,6 @@
 extern "C" {
 #endif
 
-typedef void (*ui_paint_refresh_callback)(void);
-void register_ui_paint_refresh(ui_paint_refresh_callback cb);
-extern ui_paint_refresh_callback ui_paint_refresh_cb;
-
 typedef void (*shadow_paint_box_callback)(int left, int top, int right, int bottom);
 void register_shadow_paint_box(shadow_paint_box_callback cb);
 extern shadow_paint_box_callback shadow_paint_box_cb;

@@ -45,7 +45,6 @@ extern "C" {
 void ui_run(void);
 void ui_paint_box(int width, int height, int left, int top, int right, int bottom);
 void ui_paint_name(char *name, bool real);
-void ui_paint_refresh(void);
 
 #ifdef __cplusplus
 }

@@ -89,7 +89,6 @@ int MiniGUIMain(int argc, const char *argv[])
         }
     } while (next_option != -1);
 
-    register_ui_paint_refresh(ui_paint_refresh);
     register_shadow_paint_box(shadow_paint_box);
     register_shadow_paint_name(shadow_paint_name);
     register_shadow_display(shadow_display);
