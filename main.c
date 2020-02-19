@@ -56,7 +56,9 @@ void usage(const char *name)
     printf("Usage: %s options\n", name);
     printf("-h --help  Display this usage information.\n"
            "-f --face  Set face number.\n"
-           "-e --expo  Set expo weights.\n");
+           "-e --expo  Set expo weights.\n"
+           "-i --isp   Use isp camera.\n"
+           "-c --cif   Use cif camera.\n");
     exit(0);
 }
 
@@ -65,11 +67,13 @@ int MiniGUIMain(int argc, const char *argv[])
     int face_cnt = 0;
     int next_option;
 
-    const char* const short_options = "hf:e";
+    const char* const short_options = "hf:eic";
     const struct option long_options[] = {
         {"help", 0, NULL, 'h'},
         {"face", 1, NULL, 'f'},
-        {"expo", 0, NULL, 'e'}
+        {"expo", 0, NULL, 'e'},
+        {"isp", 0, NULL, 'i'},
+        {"cif", 0, NULL, 'c'},
     };
 
     do {
@@ -80,6 +84,12 @@ int MiniGUIMain(int argc, const char *argv[])
             break;
         case 'e':
             g_expo_weights_en = true;
+            break;
+        case 'i':
+            g_isp_en = true;
+            break;
+        case 'c':
+            g_cif_en = true;
             break;
         case -1:
             break;
@@ -102,16 +112,20 @@ int MiniGUIMain(int argc, const char *argv[])
 
     rockface_control_init(face_cnt);
 
-    if (rkisp_control_init())
-        return -1;
+    if (g_isp_en)
+        if (rkisp_control_init())
+            return -1;
 
-    rkcif_control_init();
+    if (g_cif_en)
+        rkcif_control_init();
 
     ui_run();
 
-    rkisp_control_exit();
+    if (g_isp_en)
+        rkisp_control_exit();
 
-    rkcif_control_exit();
+    if (g_cif_en)
+        rkcif_control_exit();
 
     rockface_control_exit();
 

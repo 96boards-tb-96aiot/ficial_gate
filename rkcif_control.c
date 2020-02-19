@@ -73,11 +73,10 @@ static void *process(void *arg)
 
         rockface_control_convert_ir(g_rotate_bo.ptr, ctx->height, ctx->width,
                                     RK_FORMAT_YCbCr_420_SP);
-#if 0
-        if (shadow_display_vertical_cb)
+
+        if (!g_isp_en && shadow_display_vertical_cb)
             shadow_display_vertical_cb(g_rotate_bo.ptr, g_rotate_fd, RK_FORMAT_YCbCr_420_SP,
                                        ctx->height, ctx->width);
-#endif
 
         rkisp_put_frame(ctx, buf);
     } while (g_run);

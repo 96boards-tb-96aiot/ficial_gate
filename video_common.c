@@ -38,6 +38,9 @@
 
 #define MAX_VIDEO_ID 20
 
+bool g_isp_en = false;
+bool g_cif_en = false;
+
 shadow_paint_box_callback shadow_paint_box_cb = NULL;
 void register_shadow_paint_box(shadow_paint_box_callback cb)
 {

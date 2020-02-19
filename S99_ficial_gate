@@ -2,7 +2,7 @@
 
 case "$1" in
   start)
-    ficial_gate -f 30000 -e&
+    ficial_gate -f 30000 -e -i -c &
     ;;
   stop)
     killall ficial_gate

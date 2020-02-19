@@ -37,6 +37,9 @@
 extern "C" {
 #endif
 
+extern bool g_isp_en;
+extern bool g_cif_en;
+
 typedef void (*shadow_paint_box_callback)(int left, int top, int right, int bottom);
 void register_shadow_paint_box(shadow_paint_box_callback cb);
 extern shadow_paint_box_callback shadow_paint_box_cb;
