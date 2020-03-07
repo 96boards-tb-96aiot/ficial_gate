@@ -162,12 +162,14 @@ void rkisp_control_expo_weights_270(int left, int top, int right, int bottom)
         int h = right - left;
         x = x * 9 / ctx->width;
         y = y * 9 / ctx->height;
-        w = w * 9 / ctx->width + 1;
-        h = h * 9 / ctx->height + 1;
-        memset(weights, 1, sizeof(weights));
+        w = w * 9 / ctx->width;
+        h = h * 9 / ctx->height;
+        w = w ? : 1;
+        h = h ? : 1;
+        memset(weights, 2, sizeof(weights));
         for (int j = 0; j < 9; j++)
             for (int i = 0; i < 9; i++)
-                if (i >=x && i < x + w && j >= y && j < y + h)
+                if (i > x && i <= x + w && j > y && j <= y + h)
                     weights[j * 9 + i] = 31;
         rkisp_set_expo_weights(ctx, weights, sizeof(weights));
         g_def_expo_weights = false;
@@ -184,12 +186,14 @@ void rkisp_control_expo_weights_90(int left, int top, int right, int bottom)
         int h = right - left;
         x = x * 9 / ctx->width;
         y = y * 9 / ctx->height;
-        w = w * 9 / ctx->width + 1;
-        h = h * 9 / ctx->height + 1;
-        memset(weights, 1, sizeof(weights));
+        w = w * 9 / ctx->width;
+        h = h * 9 / ctx->height;
+        w = w ? : 1;
+        h = h ? : 1;
+        memset(weights, 2, sizeof(weights));
         for (int j = 0; j < 9; j++)
             for (int i = 0; i < 9; i++)
-                if (i >=x && i < x + w && j >= y && j < y + h)
+                if (i > x && i <= x + w && j > y && j <= y + h)
                     weights[j * 9 + i] = 31;
         rkisp_set_expo_weights(ctx, weights, sizeof(weights));
         g_def_expo_weights = false;
