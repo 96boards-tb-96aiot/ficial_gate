@@ -69,6 +69,7 @@ static void *process(void *arg)
                      RK_FORMAT_YCbCr_420_SP);
         if (c_RkRgaBlit(&src, &dst, NULL)) {
             printf("%s: rga fail\n", __func__);
+            rkisp_put_frame(ctx, buf);
             continue;
         }
 
