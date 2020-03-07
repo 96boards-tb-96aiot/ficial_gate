@@ -51,10 +51,12 @@
 
 #define DEFAULT_FACE_NUMBER 1000
 #define DEFAULT_FACE_PATH "/userdata"
-#define FACE_SCORE 0.9
+#define FACE_SCORE_RGB 0.55
+#define FACE_SCORE_IR 0.7
+#define FACE_SCORE_LANDMARK 0.9
 #define FACE_SCORE_REGISTER 0.9999
 #define FACE_REGISTER_CNT 5
-#define FACE_REAL_SCORE 0.9
+#define FACE_REAL_SCORE 0.7
 #define LICENCE_PATH "/userdata/key.lic"
 #define FACE_DATA_PATH "/usr/lib"
 #define MIN_FACE_WIDTH(w) ((w) / 5)
@@ -137,7 +139,7 @@ static int _rockface_control_detect(rockface_image_t *image, rockface_det_t *out
         return -1;
 
     rockface_det_t* face = get_max_face(&face_array);
-    if (face == NULL || face->score < FACE_SCORE ||
+    if (face == NULL || face->score < FACE_SCORE_RGB ||
         face->box.right - face->box.left < MIN_FACE_WIDTH(image->width) ||
         face->box.left < 0 || face->box.top < 0 ||
         face->box.right > image->width || face->box.bottom > image->height)
@@ -181,7 +183,7 @@ static int rockface_control_detect(void *ptr, int width, int height, rockface_pi
     }
     pthread_mutex_unlock(&g_rgb_track_mutex);
     ret = _rockface_control_detect(image, face, &g_rgb_track);
-    if (face->score > FACE_SCORE) {
+    if (face->score > FACE_SCORE_RGB) {
         int left, top, right, bottom;
         left = face->box.left;
         top = face->box.top;
@@ -225,7 +227,7 @@ static int rockface_control_get_feature(rockface_image_t *in_image,
 
     rockface_landmark_t landmark;
     ret = rockface_landmark5(face_handle, in_image, &(in_face->box), &landmark);
-    if (ret != ROCKFACE_RET_SUCCESS || landmark.score < FACE_SCORE)
+    if (ret != ROCKFACE_RET_SUCCESS || landmark.score < FACE_SCORE_LANDMARK)
         return -1;
 
     rockface_image_t out_img;
@@ -417,7 +419,7 @@ static bool rockface_control_liveness_ir(void)
         goto exit;
 
     rockface_det_t* face = get_max_face(&face_array);
-    if (face == NULL || face->score < FACE_SCORE ||
+    if (face == NULL || face->score < FACE_SCORE_IR ||
         face->box.right - face->box.left < MIN_FACE_WIDTH(g_ir_img.width) ||
         face->box.left < 0 || face->box.top < 0 ||
         face->box.right > g_ir_img.width || face->box.bottom > g_ir_img.height)
@@ -579,7 +581,7 @@ static void *rockface_control_thread(void *arg)
             play_wav_signal(DELETE_SUCCESS_WAV);
             if (shadow_paint_name_cb)
                 shadow_paint_name_cb(NULL, false);
-        } else if (result && face.score > FACE_SCORE) {
+        } else if (result && face.score > FACE_SCORE_RGB) {
             end = strrchr(result->name, '.');
             if (end) {
                 memset(name, 0, sizeof(name));
@@ -616,7 +618,7 @@ static void *rockface_control_thread(void *arg)
             pthread_mutex_unlock(&g_rgb_track_mutex);
         }
 #if 0
-        if (face.score > FACE_SCORE)
+        if (face.score > FACE_SCORE_RGB)
             printf("box = (%d %d %d %d) score = %f\n", face.box.left, face.box.top,
                     face.box.right, face.box.bottom, face.score);
 #endif
