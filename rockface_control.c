@@ -47,6 +47,7 @@
 #include "load_feature.h"
 #include "video_common.h"
 #include "rkisp_control.h"
+#include "rkcif_control.h"
 
 #define DEFAULT_FACE_NUMBER 1000
 #define DEFAULT_FACE_PATH "/userdata"
@@ -59,6 +60,8 @@
 #define MIN_FACE_WIDTH(w) ((w) / 5)
 #define CONVERT_RGB_WIDTH 640
 #define CONVERT_IR_WIDTH 640
+#define FACE_TRACK_FRAME 0
+#define FACE_RETRACK_TIME 1
 
 static void *g_face_data = NULL;
 static int g_face_index = 0;
@@ -69,6 +72,7 @@ static int g_total_cnt;
 
 static pthread_t g_tid;
 static bool g_run;
+static char last_name[NAME_LEN];
 static pthread_mutex_t g_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t g_cond = PTHREAD_COND_INITIALIZER;
 static bool g_flag;
@@ -76,10 +80,13 @@ static rockface_image_t g_rgb_img;
 static rockface_det_t g_rgb_face;
 static bo_t g_rgb_bo;
 static int g_rgb_fd = -1;
+static int g_rgb_track = -1;
+static pthread_mutex_t g_rgb_track_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static pthread_mutex_t g_ir_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t g_ir_cond = PTHREAD_COND_INITIALIZER;
-static rockface_liveness_t g_ir_result;
+static pthread_mutex_t g_ir_img_mutex = PTHREAD_MUTEX_INITIALIZER;
+static rockface_image_t g_ir_img;
 static bo_t g_ir_bo;
 static int g_ir_fd = -1;
 
@@ -110,15 +117,22 @@ static rockface_det_t *get_max_face(rockface_det_array_t *face_array)
     return max_face;
 }
 
-static int _rockface_control_detect(rockface_image_t *image, rockface_det_t *out_face)
+static int _rockface_control_detect(rockface_image_t *image, rockface_det_t *out_face, int *track)
 {
+    int r = 0;
     rockface_ret_t ret;
+    rockface_det_array_t face_array0;
     rockface_det_array_t face_array;
 
+    memset(&face_array0, 0, sizeof(rockface_det_array_t));
     memset(&face_array, 0, sizeof(rockface_det_array_t));
     memset(out_face, 0, sizeof(rockface_det_t));
 
-    ret = rockface_detect(face_handle, image, &face_array);
+    ret = rockface_detect(face_handle, image, &face_array0);
+    if (ret != ROCKFACE_RET_SUCCESS)
+        return -1;
+
+    ret = rockface_track(face_handle, image, FACE_TRACK_FRAME, &face_array0, &face_array);
     if (ret != ROCKFACE_RET_SUCCESS)
         return -1;
 
@@ -130,13 +144,27 @@ static int _rockface_control_detect(rockface_image_t *image, rockface_det_t *out
         return -1;
 
     memcpy(out_face, face, sizeof(rockface_det_t));
-    return 0;
+
+    if (track) {
+        pthread_mutex_lock(&g_rgb_track_mutex);
+        if (g_delete || g_register)
+            *track = -1;
+        else if (*track == face->id)
+            r = -2;
+        else
+            *track = face->id;
+        pthread_mutex_unlock(&g_rgb_track_mutex);
+    }
+
+    return r;
 }
 
 static int rockface_control_detect(void *ptr, int width, int height, rockface_pixel_format fmt,
                                    rockface_image_t *image, rockface_det_t *face)
 {
     int ret;
+    static struct timeval t0;
+    struct timeval t1;
 
     memset(face, 0, sizeof(rockface_det_t));
     memset(image, 0, sizeof(rockface_image_t));
@@ -144,7 +172,15 @@ static int rockface_control_detect(void *ptr, int width, int height, rockface_pi
     image->height = height;
     image->data = ptr;
     image->pixel_format = fmt;
-    ret = _rockface_control_detect(image, face);
+
+    gettimeofday(&t1, NULL);
+    pthread_mutex_lock(&g_rgb_track_mutex);
+    if (g_rgb_track >= 0 && (t1.tv_sec - t0.tv_sec) > FACE_RETRACK_TIME) {
+        g_rgb_track = -1;
+        gettimeofday(&t0, NULL);
+    }
+    pthread_mutex_unlock(&g_rgb_track_mutex);
+    ret = _rockface_control_detect(image, face, &g_rgb_track);
     if (face->score > FACE_SCORE) {
         int left, top, right, bottom;
         left = face->box.left;
@@ -214,7 +250,7 @@ int rockface_control_get_path_feature(char *path, void *feature)
     rockface_det_t face;
     if (rockface_image_read(path, &in_img, 1))
         return -1;
-    if (!_rockface_control_detect(&in_img, &face))
+    if (!_rockface_control_detect(&in_img, &face, NULL))
         ret = rockface_control_get_feature(&in_img, out_feature, &face);
     rockface_image_release(&in_img);
     return ret;
@@ -297,6 +333,7 @@ static void rockface_control_signal(void)
 
 int rockface_control_convert(void *ptr, int width, int height, RgaSURF_FORMAT rga_fmt)
 {
+    int r;
     rockface_ret_t ret;
     rockface_image_t image;
     rockface_det_t face;
@@ -312,7 +349,12 @@ int rockface_control_convert(void *ptr, int width, int height, RgaSURF_FORMAT rg
         printf("%s: unsupport rga fmt\n");
         return -1;
     }
-    rockface_control_detect(ptr, width, height, fmt, &image, &face);
+    r = rockface_control_detect(ptr, width, height, fmt, &image, &face);
+    if (r) {
+        if (r == -1)
+            memset(last_name, 0, sizeof(last_name));
+        return -1;
+    }
 
     if (!g_flag)
         return -1;
@@ -359,7 +401,43 @@ int rockface_control_convert(void *ptr, int width, int height, RgaSURF_FORMAT rg
     return 0;
 }
 
-static bool rockface_control_wait_ir(bool *real)
+static bool rockface_control_liveness_ir(void)
+{
+    bool real = false;
+    rockface_ret_t ret;
+    rockface_image_t image;
+    rockface_det_array_t face_array;
+    rockface_liveness_t result;
+
+    if (pthread_mutex_trylock(&g_ir_img_mutex))
+        return real;
+
+    ret = rockface_detect(face_handle, &g_ir_img, &face_array);
+    if (ret != ROCKFACE_RET_SUCCESS)
+        goto exit;
+
+    rockface_det_t* face = get_max_face(&face_array);
+    if (face == NULL || face->score < FACE_SCORE ||
+        face->box.right - face->box.left < MIN_FACE_WIDTH(g_ir_img.width) ||
+        face->box.left < 0 || face->box.top < 0 ||
+        face->box.right > g_ir_img.width || face->box.bottom > g_ir_img.height)
+        goto exit;
+
+    ret = rockface_liveness_detect(face_handle, &g_ir_img, &face->box, &result);
+    if (ret != ROCKFACE_RET_SUCCESS)
+        goto exit;
+
+    if (result.real_score < FACE_REAL_SCORE)
+        goto exit;
+
+    real = true;
+
+exit:
+    pthread_mutex_unlock(&g_ir_img_mutex);
+    return real;
+}
+
+static bool rockface_control_wait_ir(void)
 {
     bool ret = false;
     struct timeval now;
@@ -370,55 +448,45 @@ static bool rockface_control_wait_ir(bool *real)
     gettimeofday(&now, NULL);
     timeout.tv_sec = now.tv_sec + 1;
     timeout.tv_nsec = now.tv_usec * 1000;
-    if (pthread_cond_timedwait(&g_ir_cond, &g_ir_mutex, &timeout) != ETIMEDOUT) {
-        printf("real_score: %f fake_score: %f \n", g_ir_result.real_score, g_ir_result.fake_score);
+    if (!pthread_cond_timedwait(&g_ir_cond, &g_ir_mutex, &timeout))
         ret = true;
-        *real = (g_ir_result.real_score > FACE_REAL_SCORE ? true : false);
-    } else {
-        *real = false;
-    }
     pthread_mutex_unlock(&g_ir_mutex);
     return ret;
 }
 
-static void rockface_control_signal_ir(rockface_liveness_t *result)
+static void rockface_control_signal_ir(void)
 {
     pthread_mutex_lock(&g_ir_mutex);
-    memcpy(&g_ir_result, result, sizeof(rockface_liveness_t));
     pthread_cond_signal(&g_ir_cond);
     pthread_mutex_unlock(&g_ir_mutex);
 }
 
 int rockface_control_convert_ir(void *ptr, int width, int height, RgaSURF_FORMAT rga_fmt)
 {
-    rockface_ret_t ret;
-    rockface_image_t image;
-    rockface_det_t ir_face;
-    rockface_image_t ir_img;
-    rockface_det_array_t face_array;
-    rockface_liveness_t result;
+    int ret = -1;
     rga_info_t src, dst;
 
     if (!g_run)
-        return -1;
+        return ret;
 
-    memset(&ir_face, 0, sizeof(rockface_det_t));
+    if (pthread_mutex_trylock(&g_ir_img_mutex))
+        return ret;
 
-    memset(&ir_img, 0, sizeof(rockface_image_t));
+    memset(&g_ir_img, 0, sizeof(rockface_image_t));
 
     if (width > height) {
-        ir_img.width = CONVERT_IR_WIDTH;
-        ir_img.height = CONVERT_IR_WIDTH * height / width;
+        g_ir_img.width = CONVERT_IR_WIDTH;
+        g_ir_img.height = CONVERT_IR_WIDTH * height / width;
     } else {
-        ir_img.width = CONVERT_IR_WIDTH * width / height;
-        ir_img.height = CONVERT_IR_WIDTH;
+        g_ir_img.width = CONVERT_IR_WIDTH * width / height;
+        g_ir_img.height = CONVERT_IR_WIDTH;
     }
-    ir_img.pixel_format = ROCKFACE_PIXEL_FORMAT_RGB888;
+    g_ir_img.pixel_format = ROCKFACE_PIXEL_FORMAT_RGB888;
     if (g_ir_fd < 0) {
-        if (rga_control_buffer_init(&g_ir_bo, &g_ir_fd, ir_img.width, ir_img.height, 24))
-            return -1;
+        if (rga_control_buffer_init(&g_ir_bo, &g_ir_fd, g_ir_img.width, g_ir_img.height, 24))
+            goto exit;
     }
-    ir_img.data = g_ir_bo.ptr;
+    g_ir_img.data = g_ir_bo.ptr;
     memset(&src, 0, sizeof(rga_info_t));
     src.fd = -1;
     src.virAddr = ptr;
@@ -428,33 +496,20 @@ int rockface_control_convert_ir(void *ptr, int width, int height, RgaSURF_FORMAT
     dst.fd = -1;
     dst.virAddr = g_ir_bo.ptr;
     dst.mmuFlag = 1;
-    rga_set_rect(&dst.rect, 0, 0, ir_img.width, ir_img.height,
-                 ir_img.width, ir_img.height, RK_FORMAT_RGB_888);
+    rga_set_rect(&dst.rect, 0, 0, g_ir_img.width, g_ir_img.height,
+                 g_ir_img.width, g_ir_img.height, RK_FORMAT_RGB_888);
     if (c_RkRgaBlit(&src, &dst, NULL)) {
         printf("%s: rga fail\n", __func__);
-        return -1;
+        goto exit;
     }
 
-    ret = rockface_detect(face_handle, &ir_img, &face_array);
-    if (ret != ROCKFACE_RET_SUCCESS)
-        return -1;
+    ret = 0;
 
-    rockface_det_t* face = get_max_face(&face_array);
-    if (face == NULL || face->score < FACE_SCORE ||
-        face->box.right - face->box.left < MIN_FACE_WIDTH(ir_img.width) ||
-        face->box.left < 0 || face->box.top < 0 ||
-        face->box.right > ir_img.width || face->box.bottom > ir_img.height)
-        return -1;
-
-    memcpy(&ir_face, face, sizeof(rockface_det_t));
-
-    ret = rockface_liveness_detect(face_handle, &ir_img, &ir_face.box, &result);
-    if (ret != ROCKFACE_RET_SUCCESS)
-        return -1;
-
-    rockface_control_signal_ir(&result);
-
-    return 0;
+exit:
+    pthread_mutex_unlock(&g_ir_img_mutex);
+    if (ret == 0)
+        rockface_control_signal_ir();
+    return ret;
 }
 
 static void *rockface_control_thread(void *arg)
@@ -463,24 +518,18 @@ static void *rockface_control_thread(void *arg)
     struct face_data *result;
     rockface_det_t face;
     char name[NAME_LEN];
-    char last_name[NAME_LEN];
     char *end;
     struct timeval t0, t1;
     int del_timeout = 0;
     int reg_timeout = 0;
     bool real = false;
-    bool last_real = false;
 
-    memset(last_name, 0, sizeof(last_name));
     g_flag = true;
     while (g_run) {
+        real = false;
         rockface_control_wait();
         if (!g_run)
             break;
-        if (g_delete || g_register) {
-            memset(last_name, 0, sizeof(last_name));
-            last_real = false;
-        }
         if (g_delete) {
             if (!del_timeout) {
                 play_wav_signal(DELETE_START_WAV);
@@ -541,29 +590,30 @@ static void *rockface_control_thread(void *arg)
             }
             //printf("name: %s\n", name);
             //printf("time: %ldus\n", (t1.tv_sec - t0.tv_sec) * 1000000 + t1.tv_usec - t0.tv_usec);
-            if (rkcif_control_run())
-                rockface_control_wait_ir(&real);
-            else
-                real = false;
+            if (rkcif_control_run()) {
+                if (rockface_control_wait_ir())
+                    if (rockface_control_liveness_ir())
+                        real = true;
+            }
             if (shadow_paint_name_cb)
                 shadow_paint_name_cb(name, real);
-            if (!g_register && !last_real && real) {
+            if (!g_register && real && memcmp(last_name, name, sizeof(last_name))) {
                 printf("name: %s\n", name);
                 memset(last_name, 0, sizeof(last_name));
                 strncpy(last_name, name, sizeof(last_name) - 1);
                 if (real) {
                     play_wav_signal(PLEASE_GO_THROUGH_WAV);
-                    last_real = true;
                 }
             }
-        } else if (face.score > FACE_SCORE) {
-            if (shadow_paint_name_cb)
-                shadow_paint_name_cb(NULL, false);
         } else {
-            memset(last_name, 0, sizeof(last_name));
-            last_real = false;
             if (shadow_paint_name_cb)
                 shadow_paint_name_cb(NULL, false);
+        }
+        if (!real) {
+            memset(last_name, 0, sizeof(last_name));
+            pthread_mutex_lock(&g_rgb_track_mutex);
+            g_rgb_track = -1;
+            pthread_mutex_unlock(&g_rgb_track_mutex);
         }
 #if 0
         if (face.score > FACE_SCORE)
