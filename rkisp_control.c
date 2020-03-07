@@ -49,11 +49,29 @@ static const struct rkisp_api_buf *buf;
 static bool g_run;
 static pthread_t g_tid;
 
+static inline void rkisp_inc_fps(void)
+{
+    static int fps = 0;
+    static struct timeval t0;
+    struct timeval t1;
+
+    fps++;
+    gettimeofday(&t1, NULL);
+    if ((t1.tv_sec - t0.tv_sec) * 1000000 + (t1.tv_usec - t0.tv_usec) > 1000000) {
+        printf("ISP fps: %d\n", fps);
+        fps = 0;
+        gettimeofday(&t0, NULL);
+    }
+}
+
 static void *process(void *arg)
 {
     rga_info_t src, dst;
 
     do {
+#if 0
+        rkisp_inc_fps();
+#endif
         buf = rkisp_get_frame(ctx, 0);
 
         memset(&src, 0, sizeof(rga_info_t));
