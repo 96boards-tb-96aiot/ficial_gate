@@ -59,6 +59,7 @@ void usage(const char *name)
            "-e --expo  Set expo weights.\n"
            "-i --isp   Use isp camera.\n"
            "-c --cif   Use cif camera.\n");
+    printf("e.g. %s -f 30000 -e -i -c\n", name);
     exit(0);
 }
 
