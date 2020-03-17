@@ -40,6 +40,7 @@
 
 static bool g_def_expo_weights = false;
 bool g_expo_weights_en = false;
+static unsigned char weights[81];
 
 static bo_t g_rotate_bo;
 static int g_rotate_fd = -1;
@@ -131,6 +132,15 @@ int rkisp_control_init(void)
     if (rkisp_start_capture(ctx))
         return -1;
 
+    rkisp_get_expo_weights(ctx, weights, sizeof(weights));
+    printf("default weights:\n");
+    for (int i = 0; i < 81; i++) {
+        printf("0x%02x ", weights[i]);
+        if ((i + 1) % 9 == 0)
+            printf("\n");
+    }
+    printf("\n");
+
     g_run = true;
     if (pthread_create(&g_tid, NULL, process, NULL)) {
         printf("pthread_create fail\n");
@@ -205,17 +215,6 @@ void rkisp_control_expo_weights_90(int left, int top, int right, int bottom)
 void rkisp_control_expo_weights_default(void)
 {
     if (g_expo_weights_en) {
-        unsigned char weights[81] = {
-            1,  5,  9,  15, 31, 15, 9,  5,  1,
-            1,  5,  9,  15, 31, 15, 9,  5,  1,
-            1,  5,  9,  15, 31, 15, 9,  5,  1,
-            1,  5,  9,  15, 31, 15, 9,  5,  1,
-            1,  5,  9,  15, 31, 15, 9,  5,  1,
-            1,  5,  9,  15, 31, 15, 9,  5,  1,
-            1,  5,  9,  15, 31, 15, 9,  5,  1,
-            1,  5,  9,  15, 31, 15, 9,  5,  1,
-            1,  5,  9,  15, 31, 15, 9,  5,  1,
-        };
         if (!g_def_expo_weights) {
             g_def_expo_weights = true;
             rkisp_set_expo_weights(ctx, weights, sizeof(weights));
