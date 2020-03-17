@@ -55,6 +55,8 @@ static inline void rkisp_inc_fps(void)
     static struct timeval t0;
     struct timeval t1;
 
+    if (!t0.tv_sec)
+        gettimeofday(&t0, NULL);
     fps++;
     gettimeofday(&t1, NULL);
     if ((t1.tv_sec - t0.tv_sec) * 1000000 + (t1.tv_usec - t0.tv_usec) > 1000000) {
